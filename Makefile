@@ -9,7 +9,7 @@ build: ## This builds executable
 	$(CC) $(CFLAGS) ping.cc -o ping
 
 run: ## This runs ping on a default ip
-	./ping 192.168.86.14
+	./ping google.com
 
 clean: ## This removes the executable
 	/bin/rm -f ping
