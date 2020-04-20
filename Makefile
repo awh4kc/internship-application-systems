@@ -6,7 +6,10 @@ CFLAGS := -O2 -g -Wall -Werror -pedantic -std=c++14
 .PHONY: clean help
 
 build: ## This builds executable
-	$(CC) $(CFLAGS) ping.c -o ping
+	$(CC) $(CFLAGS) ping.cc -o ping
+
+run: ## This runs ping on a default ip
+	./ping 192.168.86.14
 
 clean: ## This removes the executable
 	/bin/rm -f ping
