@@ -2,7 +2,7 @@
 
 int interrupt = 0;
 
-char* Ping::getip() {
+void Ping::getip() {
     char host[256];
     struct addrinfo hints, *servinfo;
     int ret;
@@ -14,9 +14,7 @@ char* Ping::getip() {
 
     if ((ret = getaddrinfo(_host.c_str(), NULL, &hints, &servinfo)) != 0) {
         fprintf(stderr, "getaddrinfo: %s", gai_strerror(ret));
-        char bad = '\0';
-        char* ret = &bad;
-        return ret;
+        return;
     }
 
     getnameinfo(servinfo->ai_addr, servinfo->ai_addrlen, host, sizeof host, NULL, 0, NI_NUMERICHOST);
@@ -26,16 +24,27 @@ char* Ping::getip() {
     _server.sin_family = AF_UNSPEC;
     _server.sin_addr.s_addr = *(uint32_t*) servinfo->ai_addr;
     _server.sin_port = htons(12345);
-
-    return _ip_addr;
 }
 
 void Ping::ping() {
 
 }
 
+void parse_command(int argc, char** argv, char** hostname) {
+    for (int i = 0; i < argc; ++i) {
+        if (argv[i][0] == '-') {
+            puts(argv[i]);
+        } else {
+            *hostname = argv[i];
+        }
+    }
+}
+
 int main(int argc, char** argv) {
-    Ping ping("google.com");
-    char* ip = ping.getip();
-    std::cout << ip << std::endl;
+    char* hostname = NULL;
+    parse_command(argc, argv, &hostname);
+    Ping ping(hostname);
+    ping.getip();
+    ping.printip();
+    ping.ping();
 }

@@ -11,8 +11,11 @@
 class Ping {
     public:
         Ping(std::string host): _host(host) {}
-        char* getip();
+        void getip();
         void ping();
+        void printip() {
+            puts(_ip_addr);
+        }
 
     private:
         std::string _host;
