@@ -31,7 +31,6 @@ class Ping {
         std::string _host;
         struct sockaddr_in _server;
         int _sockfd;
-        int _count = 0;
         char* _ip_addr = (char*)malloc(sizeof(char)*45);
         unsigned short checksum(short* data, size_t bytes) {
             unsigned short ret;

@@ -1,9 +1,9 @@
 #include "ping.h"
 
-int interrupt = 0;
+int interrupt = 1;
 
 void handler(int sig) {
-    interrupt = 1;
+    interrupt = 0;
 }
 
 void Ping::getip() {
@@ -26,7 +26,6 @@ void Ping::getip() {
 
     _server.sin_family = AF_UNSPEC;
     _server.sin_addr.s_addr = *(uint32_t*) servinfo->ai_addr;
-    _server.sin_port = htons(12345);
 }
 
 void Ping::ping() {
@@ -58,7 +57,7 @@ void Ping::ping() {
 
     int count = 0;
     gettimeofday(&start, NULL);
-    while (_count == 0 || count < _count) {
+    while (interrupt) {
         count++;
         struct timeval start_ping;
         struct timeval stop_ping;
@@ -77,15 +76,15 @@ void Ping::ping() {
         gettimeofday(&start_ping, NULL);
         int packet_sent = 1;
         if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) <= 0) {
-			fprintf(stdout, "Cannot send packet.\n");
+            fprintf(stdout, "Cannot send packet.\n");
             packet_sent = 0;
         } else {
             transmitted++;
         }
         server_addr_size = sizeof(server);
-        int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, &server_addr_size);
+        int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
         gettimeofday(&stop_ping, NULL);
-        if (interrupt) {
+        if (!interrupt) {
             break;
         }
         if (status <= 0 && count > 1) {
