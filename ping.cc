@@ -12,7 +12,6 @@ void Ping::getip() {
     int ret;
 
     memset(&hints, 0, sizeof(hints));
-    // hints.ai_family = AF_UNSPEC;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
 
@@ -31,7 +30,69 @@ void Ping::getip() {
 }
 
 void Ping::ping() {
+    struct sockaddr_in serve;
+    socklen_t serve_addr_size;
+    int transmitted = 0;
+    int received = 0;
 
+    int ttl_val = 52;
+    if (setsockopt(_sockfd, SOL_IP, IP_TTL, &ttl_val, (socklen_t)sizeof(ttl_val)) != 0) {
+        fprintf(stderr, "Failed to modify TTL in socket options\n");
+        return;
+    }
+
+    struct timeval timeout;
+    bzero(&timeout, sizeof(timeout));
+    timeout.tv_sec = 2;
+    if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0) {
+        fprintf(stderr, "Failed to modify timeout in socket options\n");
+        return;
+    }
+
+    int count = 0;
+    while (_count == 0 || count < _count) {
+        count++;
+        struct icmphdr hdr;
+        bzero(&hdr, sizeof(hdr));
+
+        hdr.type = ICMP_ECHO;
+        hdr.code = 0;
+        hdr.un.echo.id = getpid();
+        hdr.un.echo.sequence = htons(count);
+        hdr.checksum = 0;
+        hdr.checksum = checksum((short*)&hdr, sizeof(hdr));
+        sleep(1);
+        int packet_sent = 1;
+        if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) <= 0) {
+			fprintf(stderr, "Cannot send packet.\n");
+            packet_sent = 0;
+        } else {
+            transmitted++;
+        }
+        serve_addr_size = sizeof(serve);
+        if (interrupt) {
+            break;
+        }
+        if (recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&serve, &serve_addr_size) <= 0 && count > 1) {
+            fprintf(stderr, "Didn't receive packet.\n");
+        } else {
+            if (packet_sent) {
+                received++;
+                fprintf(stdout, "received");
+            }
+        }
+    }
+
+    if (interrupt) {
+        transmitted--;
+    }
+
+    fprintf(stdout, "\n--- %s ping statistics ---\n", _host.c_str());
+
+    if (close(_sockfd) != 0) {
+        fprintf(stderr, "Failed to close socket\n");
+        return;
+    }
 }
 
 void parse_command(int argc, char** argv, char** hostname) {
@@ -49,7 +110,6 @@ int main(int argc, char** argv) {
     parse_command(argc, argv, &hostname);
     Ping ping(hostname);
     ping.getip();
-    ping.printip();
     ping.getsocket();
     signal(SIGINT, handle_interrupt);
     ping.ping();
