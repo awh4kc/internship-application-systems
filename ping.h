@@ -10,6 +10,7 @@
 #include <signal.h> // sigint
 #include <bits/stdc++.h> // INT_MAX
 #include <sys/time.h> // time
+#include <errno.h> // error
 
 class Ping {
     public:

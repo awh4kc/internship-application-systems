@@ -42,6 +42,27 @@ void Ping::ping() {
     double sum = 0.0;
     double var = 0.0;
 
+    int ttl_val = 52;
+    socklen_t ttl_val_size = sizeof(ttl_val);
+
+    // Modify TTL in IP layer
+    int stat = setsockopt(_sockfd, SOL_IP, IP_TTL, &ttl_val, ttl_val_size);
+    if(stat != 0) {
+        fprintf(stderr, "Failed to modify TTL in socket options\n");
+        return;
+    }
+
+    struct timeval timeout;
+    bzero(&timeout, sizeof(timeout));
+    timeout.tv_sec = 2;
+
+    // Modify timeout
+    stat = setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    if(stat != 0) {
+        fprintf(stderr, "Failed to modify timeout in socket options\n");
+        return;
+    }
+
     int count = 0;
     gettimeofday(&start, NULL);
     while (interrupt) {
@@ -62,7 +83,7 @@ void Ping::ping() {
 
         gettimeofday(&start_ping, NULL);
         int packet_sent = 1;
-        if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) <= 0) {
+        if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) < 0) {
             fprintf(stdout, "Cannot send packet.\n");
             packet_sent = 0;
         } else {
@@ -74,7 +95,8 @@ void Ping::ping() {
         if (!interrupt) {
             break;
         }
-        if (status <= 0 && count > 1) {
+        if (status <= 0) {
+            fprintf(stdout, "error: %d\n", errno);
             fprintf(stdout, "status: %d\n", status);
             fprintf(stdout, "Didn't receive packet.\n");
         } else {
@@ -95,7 +117,7 @@ void Ping::ping() {
     average = sum/received;
     std_dev = sqrt(var/received);
 
-    if (interrupt) {
+    if (!interrupt) {
         transmitted--;
     }
 
