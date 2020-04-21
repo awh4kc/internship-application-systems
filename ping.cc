@@ -82,14 +82,15 @@ void Ping::ping() {
             transmitted++;
         }
         server_addr_size = sizeof(server);
+        int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, &server_addr_size);
+        gettimeofday(&stop_ping, NULL);
         if (interrupt) {
             break;
         }
-        if (recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, &server_addr_size) <= 0 && count > 1) {
-            gettimeofday(&stop_ping, NULL);
+        if (status <= 0 && count > 1) {
+            fprintf(stdout, "status: %d\n", status);
             fprintf(stderr, "Didn't receive packet.\n");
         } else {
-            gettimeofday(&stop_ping, NULL);
             if (packet_sent) {
                 received++;
                 double time = (((stop_ping.tv_sec - start_ping.tv_sec) * 1000000L + stop_ping.tv_usec) - start_ping.tv_usec)/1000.0;
