@@ -72,24 +72,6 @@ void Ping::ping() {
         hdr.checksum = 0;
         hdr.checksum = checksum((short*)&hdr, sizeof(hdr));
 
-        // char packet[sizeof(icmphdr)];
-        // memset(packet, 0, sizeof(packet));
-        // icmphdr *pkt = (icmphdr*)packet;
-        // pkt->type = ICMP_ECHO;
-        // pkt->code = 0;
-        // pkt->checksum = 0;
-        // pkt->un.echo.id = 1;
-        // pkt->un.echo.sequence = count;
-        // pkt->checksum = checksum((short*)pkt, sizeof(packet));
-        // sendto(_sockfd, packet, sizeof(packet), 0, (sockaddr*)&_server, sizeof(_server));
-        // sleep(1);
-        // server_addr_size = sizeof(server);
-        // char inbuf[192];
-        // memset(inbuf, 0, sizeof(inbuf));
-        // int addrlen = sizeof(sockaddr_in);
-        // int stat = recvfrom(_sockfd, inbuf, sizeof(inbuf), 0, (sockaddr*)&server, (socklen_t*)&addrlen);
-        // printf("stat: %d", stat);
-
         sleep(1);
 
         gettimeofday(&start_ping, NULL);
