@@ -42,19 +42,6 @@ void Ping::ping() {
     double sum = 0.0;
     double var = 0.0;
 
-    int ttl_val = 52;
-    if (setsockopt(_sockfd, SOL_IP, IP_TTL, &ttl_val, (socklen_t)sizeof(ttl_val)) != 0) {
-        fprintf(stdout, "Failed to modify TTL in socket options\n");
-        return;
-    }
-    struct timeval timeout;
-    bzero(&timeout, sizeof(timeout));
-    timeout.tv_sec = 2;
-    if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0) {
-        fprintf(stdout, "Failed to modify timeout in socket options\n");
-        return;
-    }
-
     int count = 0;
     gettimeofday(&start, NULL);
     while (interrupt) {
