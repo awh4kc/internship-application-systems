@@ -2,12 +2,16 @@
 
 int interrupt = 0;
 
+void handle_interrupt(int sig) {
+    interrupt = 1;
+}
+
 void Ping::getip() {
     char host[256];
     struct addrinfo hints, *servinfo;
     int ret;
 
-    memset(&hints, 0, sizeof hints);
+    memset(&hints, 0, sizeof(hints));
     // hints.ai_family = AF_UNSPEC;
     hints.ai_family = AF_INET;
     hints.ai_socktype = SOCK_STREAM;
@@ -17,7 +21,7 @@ void Ping::getip() {
         return;
     }
 
-    getnameinfo(servinfo->ai_addr, servinfo->ai_addrlen, host, sizeof host, NULL, 0, NI_NUMERICHOST);
+    getnameinfo(servinfo->ai_addr, servinfo->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
     strcpy(_ip_addr, host);
     freeaddrinfo(servinfo);
 
@@ -46,5 +50,7 @@ int main(int argc, char** argv) {
     Ping ping(hostname);
     ping.getip();
     ping.printip();
+    ping.getsocket();
+    signal(SIGINT, handle_interrupt);
     ping.ping();
 }
