@@ -15,17 +15,20 @@
 class Ping {
     public:
         Ping(char* host): _host(host) {}
-        void getipaddr();
-        void getsocket() {
+        int getipaddr();
+        int getsocket() {
             _sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
             if (_sockfd < 0) {
                 fprintf(stdout, "Cannot create socket\n");
+                fprintf(stdout, "You might try running this command as a superuser\n");
+                return -1;
             }
+            return 0;
         }
         char* getip() {
             return _ip_addr;
         }
-        void ping();
+        int ping();
 
     private:
         char* _host;

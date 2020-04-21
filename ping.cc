@@ -6,19 +6,21 @@ void handler(int sig) {
     interrupt = !sig;
 }
 
-void Ping::getipaddr() {
+int Ping::getipaddr() {
     struct hostent *host;
     host = gethostbyname(_host);
     if (host == NULL) {
         fprintf(stderr, "Could not get ip address\n");
+        return -1;
     }
     strcpy(_ip_addr, inet_ntoa(*(struct in_addr *)host->h_addr));
     _server.sin_family = host->h_addrtype;
     _server.sin_addr.s_addr = *(uint32_t*) host->h_addr;
     _server.sin_port = htons(0);
+    return 0;
 }
 
-void Ping::ping() {
+int Ping::ping() {
     struct sockaddr_in server;
     int sent_total = 0;
     int received_total = 0;
@@ -93,29 +95,44 @@ void Ping::ping() {
 
     if (close(_sockfd) != 0) {
         fprintf(stderr, "Failed to close socket\n");
-        return;
+        return -1;
     }
+    return 0;
 }
 
-void parse_command(int argc, char** argv, char** hostname) {
+int parse_command(int argc, char** argv, char** hostname) {
+    if (argc < 2) {
+        printf("Please input commands as `sudo ./ping <domain name or ip address>`\n");
+        return -1;
+    }
     for (int i = 0; i < argc; ++i) {
         if (argv[i][0] == '-') {
-            puts(argv[i]);
+            printf("Sorry, this does not yet support flags\n");
+            return -1;
         } else {
             *hostname = argv[i];
         }
     }
+    return 0;
 }
 
 int main(int argc, char** argv) {
     char* hostname = NULL;
-    parse_command(argc, argv, &hostname);
+    if (parse_command(argc, argv, &hostname) < 0) {
+        return -1;
+    }
     Ping pong(hostname);
-    pong.getsocket();
-    pong.getipaddr();
+    if (pong.getsocket() < 0) {
+        return -1;
+    }
+    if (pong.getipaddr() < 0) {
+        return -1;
+    }
     char* ip_addr = pong.getip();
     fprintf(stdout, "PING: %s (%s) %d bytes of data.\n", hostname, ip_addr, 64);
     signal(SIGINT, handler);
-    pong.ping();
+    if (pong.ping() < 0) {
+        return -1;
+    }
     return 0;
 }
