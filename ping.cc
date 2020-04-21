@@ -26,6 +26,7 @@ void Ping::getip() {
 
     _server.sin_family = AF_UNSPEC;
     _server.sin_addr.s_addr = *(uint32_t*) servinfo->ai_addr;
+    _server.sin_port = htons(0);
 }
 
 void Ping::ping() {
@@ -63,6 +64,9 @@ void Ping::ping() {
         return;
     }
 
+    // if ( fcntl(_sockfd, F_SETFL, O_NONBLOCK) != 0 )
+        // perror("Request nonblocking I/O");
+
     int count = 0;
     gettimeofday(&start, NULL);
     while (interrupt) {
@@ -83,14 +87,26 @@ void Ping::ping() {
 
         gettimeofday(&start_ping, NULL);
         int packet_sent = 1;
-        if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) < 0) {
+        int st = sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server));
+        if (st < 0) {
             fprintf(stdout, "Cannot send packet.\n");
             packet_sent = 0;
         } else {
             transmitted++;
+            fprintf(stdout, "sent: %d\n", st);
         }
         server_addr_size = sizeof(server);
-        int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
+        int status;
+        int counter = 0;
+        while (interrupt) {
+            status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
+            printf("counter: %d\n", counter++);
+            fprintf(stdout, "error: %d\n", errno);
+            if (!interrupt) {
+                break;
+            }
+        }
+        // int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
         gettimeofday(&stop_ping, NULL);
         if (!interrupt) {
             break;

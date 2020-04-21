@@ -11,6 +11,7 @@
 #include <bits/stdc++.h> // INT_MAX
 #include <sys/time.h> // time
 #include <errno.h> // error
+#include <fcntl.h>
 
 class Ping {
     public:
