@@ -3,7 +3,7 @@ CFLAGS := -O2 -g -Wall -Werror -pedantic -std=c++14
 
 .DEFAULT_GOAL := help
 
-.PHONY: clean help
+.PHONY: clean help run local
 
 build: ## This builds executable
 	$(CC) $(CFLAGS) ping.cc -o ping
