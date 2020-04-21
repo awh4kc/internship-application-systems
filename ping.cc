@@ -2,7 +2,7 @@
 
 int interrupt = 0;
 
-void handle_interrupt(int sig) {
+void handler(int sig) {
     interrupt = 1;
 }
 
@@ -16,7 +16,7 @@ void Ping::getip() {
     hints.ai_socktype = SOCK_STREAM;
 
     if ((ret = getaddrinfo(_host.c_str(), NULL, &hints, &servinfo)) != 0) {
-        fprintf(stderr, "getaddrinfo: %s", gai_strerror(ret));
+        fprintf(stdout, "getaddrinfo: %s", gai_strerror(ret));
         return;
     }
 
@@ -45,14 +45,14 @@ void Ping::ping() {
 
     int ttl_val = 52;
     if (setsockopt(_sockfd, SOL_IP, IP_TTL, &ttl_val, (socklen_t)sizeof(ttl_val)) != 0) {
-        fprintf(stderr, "Failed to modify TTL in socket options\n");
+        fprintf(stdout, "Failed to modify TTL in socket options\n");
         return;
     }
     struct timeval timeout;
     bzero(&timeout, sizeof(timeout));
     timeout.tv_sec = 2;
     if (setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout)) != 0) {
-        fprintf(stderr, "Failed to modify timeout in socket options\n");
+        fprintf(stdout, "Failed to modify timeout in socket options\n");
         return;
     }
 
@@ -76,7 +76,7 @@ void Ping::ping() {
         gettimeofday(&start_ping, NULL);
         int packet_sent = 1;
         if (sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server)) <= 0) {
-			fprintf(stderr, "Cannot send packet.\n");
+			fprintf(stdout, "Cannot send packet.\n");
             packet_sent = 0;
         } else {
             transmitted++;
@@ -89,7 +89,7 @@ void Ping::ping() {
         }
         if (status <= 0 && count > 1) {
             fprintf(stdout, "status: %d\n", status);
-            fprintf(stderr, "Didn't receive packet.\n");
+            fprintf(stdout, "Didn't receive packet.\n");
         } else {
             if (packet_sent) {
                 received++;
@@ -118,7 +118,7 @@ void Ping::ping() {
     fprintf(stdout, "rtt min/avg/max/mdev = %0.3f/%0.3f/%0.3f/%0.3f ms\n", min_val, max_val, average, std_dev);
 
     if (close(_sockfd) != 0) {
-        fprintf(stderr, "Failed to close socket\n");
+        fprintf(stdout, "Failed to close socket\n");
         return;
     }
 }
@@ -139,6 +139,6 @@ int main(int argc, char** argv) {
     Ping ping(hostname);
     ping.getip();
     ping.getsocket();
-    signal(SIGINT, handle_interrupt);
+    signal(SIGINT, handler);
     ping.ping();
 }

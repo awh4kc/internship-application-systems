@@ -19,7 +19,7 @@ class Ping {
         void getsocket() {
             _sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
             if (_sockfd < 0) {
-                fprintf(stderr, "Cannot create socket\n");
+                fprintf(stdout, "Cannot create socket\n");
                 _sockfd = -1;
             }
         }
