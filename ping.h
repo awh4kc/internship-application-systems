@@ -11,29 +11,27 @@
 #include <bits/stdc++.h> // INT_MAX
 #include <sys/time.h> // time
 #include <errno.h> // error
-#include <fcntl.h>
 
 class Ping {
     public:
-        Ping(std::string host): _host(host) {}
-        void getip();
-        void ping();
+        Ping(char* host): _host(host) {}
+        void getipaddr();
         void getsocket() {
             _sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
             if (_sockfd < 0) {
                 fprintf(stdout, "Cannot create socket\n");
-                _sockfd = -1;
             }
         }
-        void printip() {
-            puts(_ip_addr);
+        char* getip() {
+            return _ip_addr;
         }
+        void ping();
 
     private:
-        std::string _host;
+        char* _host;
         struct sockaddr_in _server;
         int _sockfd;
-        char* _ip_addr = (char*)malloc(sizeof(char)*45);
+        char* _ip_addr = (char *) malloc(sizeof(char)*45);
         unsigned short checksum(short* data, size_t bytes) {
             unsigned short ret;
             unsigned int sum = 0;

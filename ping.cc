@@ -1,39 +1,27 @@
 #include "ping.h"
 
-int interrupt = 1;
+bool interrupt = true;
 
 void handler(int sig) {
-    interrupt = 0;
+    interrupt = !sig;
 }
 
-void Ping::getip() {
-    char host[256];
-    struct addrinfo hints, *servinfo;
-    int ret;
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_INET;
-    hints.ai_socktype = SOCK_STREAM;
-
-    if ((ret = getaddrinfo(_host.c_str(), NULL, &hints, &servinfo)) != 0) {
-        fprintf(stdout, "getaddrinfo: %s", gai_strerror(ret));
-        return;
+void Ping::getipaddr() {
+    struct hostent *host;
+    host = gethostbyname(_host);
+    if (host == NULL) {
+        fprintf(stderr, "Could not get ip address\n");
     }
-
-    getnameinfo(servinfo->ai_addr, servinfo->ai_addrlen, host, sizeof(host), NULL, 0, NI_NUMERICHOST);
-    strcpy(_ip_addr, host);
-    freeaddrinfo(servinfo);
-
-    _server.sin_family = AF_UNSPEC;
-    _server.sin_addr.s_addr = *(uint32_t*) servinfo->ai_addr;
+    strcpy(_ip_addr, inet_ntoa(*(struct in_addr *)host->h_addr));
+    _server.sin_family = host->h_addrtype;
+    _server.sin_addr.s_addr = *(uint32_t*) host->h_addr;
     _server.sin_port = htons(0);
 }
 
 void Ping::ping() {
     struct sockaddr_in server;
-    socklen_t server_addr_size;
-    int transmitted = 0;
-    int received = 0;
+    int sent_total = 0;
+    int received_total = 0;
     struct timeval start;
     struct timeval stop;
     double min_val = INT_MAX;
@@ -42,87 +30,48 @@ void Ping::ping() {
     double std_dev = 0.0;
     double sum = 0.0;
     double var = 0.0;
-
-    int ttl_val = 52;
-    socklen_t ttl_val_size = sizeof(ttl_val);
-
-    // Modify TTL in IP layer
-    int stat = setsockopt(_sockfd, SOL_IP, IP_TTL, &ttl_val, ttl_val_size);
-    if(stat != 0) {
-        fprintf(stderr, "Failed to modify TTL in socket options\n");
-        return;
-    }
-
-    struct timeval timeout;
-    bzero(&timeout, sizeof(timeout));
-    timeout.tv_sec = 2;
-
-    // Modify timeout
-    stat = setsockopt(_sockfd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-    if(stat != 0) {
-        fprintf(stderr, "Failed to modify timeout in socket options\n");
-        return;
-    }
-
-    // if ( fcntl(_sockfd, F_SETFL, O_NONBLOCK) != 0 )
-        // perror("Request nonblocking I/O");
-
     int count = 0;
+    bool sent;
+
     gettimeofday(&start, NULL);
     while (interrupt) {
-        count++;
+        count += 1;
         struct timeval start_ping;
         struct timeval stop_ping;
-        struct icmphdr hdr;
-        bzero(&hdr, sizeof(hdr));
+        struct icmphdr icmp_header;
+        memset(&icmp_header, 0, sizeof(icmp_header));
 
-        hdr.type = ICMP_ECHO;
-        hdr.code = 0;
-        hdr.un.echo.id = htons(getpid());
-        hdr.un.echo.sequence = htons(count);
-        hdr.checksum = 0;
-        hdr.checksum = checksum((short*)&hdr, sizeof(hdr));
-
+        icmp_header.type = ICMP_ECHO;
+        icmp_header.code = 0;
+        icmp_header.un.echo.id = htons(getpid());
+        icmp_header.un.echo.sequence = htons(count);
+        icmp_header.checksum = 0;
+        icmp_header.checksum = checksum((short*)&icmp_header, sizeof(icmp_header));
         sleep(1);
 
         gettimeofday(&start_ping, NULL);
-        int packet_sent = 1;
-        int st = sendto(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&_server, sizeof(_server));
-        if (st < 0) {
-            fprintf(stdout, "Cannot send packet.\n");
-            packet_sent = 0;
+        if (sendto(_sockfd, &icmp_header, sizeof(icmp_header), 0, (struct sockaddr*)&_server, sizeof(_server)) < 0) {
+            fprintf(stderr, "Cannot send packet.\n");
+            sent = false;
         } else {
-            transmitted++;
-            fprintf(stdout, "sent: %d\n", st);
+            sent_total += 1;
+            sent = true;
         }
-        server_addr_size = sizeof(server);
-        int status;
-        int counter = 0;
-        while (interrupt) {
-            status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
-            printf("counter: %d\n", counter++);
-            fprintf(stdout, "error: %d\n", errno);
-            if (!interrupt) {
-                break;
-            }
-        }
-        // int status = recvfrom(_sockfd, &hdr, sizeof(hdr), 0, (struct sockaddr*)&server, (socklen_t*)&server_addr_size);
-        gettimeofday(&stop_ping, NULL);
         if (!interrupt) {
             break;
         }
-        if (status <= 0) {
-            fprintf(stdout, "error: %d\n", errno);
-            fprintf(stdout, "status: %d\n", status);
-            fprintf(stdout, "Didn't receive packet.\n");
+        socklen_t size = sizeof(server);
+        if (recvfrom(_sockfd, &icmp_header, sizeof(icmp_header), 0, (struct sockaddr*)&server, &size) <= 0) {
+            fprintf(stderr, "Didn't receive packet.\n");
         } else {
-            if (packet_sent) {
-                received++;
+            gettimeofday(&stop_ping, NULL);
+            if (sent) {
+                received_total += 1;
                 double time = (((stop_ping.tv_sec - start_ping.tv_sec) * 1000000L + stop_ping.tv_usec) - start_ping.tv_usec)/1000.0;
                 min_val = std::min(min_val, time);
                 max_val = std::max(max_val, time);
                 sum += time;
-                average = sum / received;
+                average = sum / received_total;
                 var += ((time - average) * (time - average));
                 fprintf(stdout, "%d bytes from %s: icmp_seq=%d ttl=%d time=%0.1f ms\n", 64, _ip_addr, count, 52, time);
             }
@@ -130,20 +79,20 @@ void Ping::ping() {
     }
     gettimeofday(&stop, NULL);
     double total_time = (((stop.tv_sec - start.tv_sec) * 1000000L + stop.tv_usec) - start.tv_usec)/1000.0;
-    average = sum/received;
-    std_dev = sqrt(var/received);
+    average = sum/received_total;
+    std_dev = sqrt(var/received_total);
 
     if (!interrupt) {
-        transmitted--;
+        sent_total--;
     }
 
-    fprintf(stdout, "\n--- %s ping statistics ---\n", _host.c_str());
-    double packet_loss = 1.0 * (transmitted - received) / transmitted * 100;
-    fprintf(stdout, "%d packets transmitted, %d received, %0.0f%% packet loss, time %0.0fms\n", transmitted, received, packet_loss, total_time);
+    fprintf(stdout, "\n--- %s ping statistics ---\n", _host);
+    double packet_loss = 1.0 * (sent_total - received_total) / sent_total * 100;
+    fprintf(stdout, "%d packets sent_total, %d received, %0.0f%% packet loss, time %0.0fms\n", sent_total, received_total, packet_loss, total_time);
     fprintf(stdout, "rtt min/avg/max/mdev = %0.3f/%0.3f/%0.3f/%0.3f ms\n", min_val, max_val, average, std_dev);
 
     if (close(_sockfd) != 0) {
-        fprintf(stdout, "Failed to close socket\n");
+        fprintf(stderr, "Failed to close socket\n");
         return;
     }
 }
@@ -161,9 +110,12 @@ void parse_command(int argc, char** argv, char** hostname) {
 int main(int argc, char** argv) {
     char* hostname = NULL;
     parse_command(argc, argv, &hostname);
-    Ping ping(hostname);
-    ping.getip();
-    ping.getsocket();
+    Ping pong(hostname);
+    pong.getsocket();
+    pong.getipaddr();
+    char* ip_addr = pong.getip();
+    fprintf(stdout, "PING: %s (%s) %d bytes of data.\n", hostname, ip_addr, 64);
     signal(SIGINT, handler);
-    ping.ping();
+    pong.ping();
+    return 0;
 }
